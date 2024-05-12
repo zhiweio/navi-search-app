@@ -167,7 +167,7 @@ def main():
             "选择搜索引擎", supported_search_engines, key="engine_selector"
         )
         query_keyword = st.text_input(
-            "请输入搜索关键词", value="streamlit", key="keyword_input"
+            "请输入搜索关键词", value="脑洞部长", key="keyword_input"
         )
         page_num = st.number_input(
             "分页",
@@ -208,8 +208,10 @@ def main():
                     ]
                 ]
             )
+            height = 410
             rows = len(results_df)
-            height = int(rows / 5) * 200
+            if rows > 20:
+                height = 810
             preview_cntr.markdown("**搜索结果预览**")
             preview_cntr.dataframe(
                 results_df,
