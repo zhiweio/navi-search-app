@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "navi-search"
+version = "0.1.0"
+description = "Search and export results"
+authors = ["wangzhiwei <noparking188@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.9.7 || >3.9.7"
+pandas = "^2.2.2"
+requests = "^2.31.0"
+streamlit = "^1.34.0"
+beautifulsoup4 = "^4.12.3"
+loguru = "^0.7.2"
+search-engine-parser = "^0.6.8"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
