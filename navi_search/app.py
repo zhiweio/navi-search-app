@@ -69,7 +69,9 @@ async def fetch_search_results(
     search_url = search_engine.get_search_url(keyword, page=page, **num_param)
     log.info(f"search url: {search_url}")
     try:
-        results = await search_engine.async_search(keyword, page=page, **num_param)
+        results = await search_engine.async_search(
+            keyword, page=page, **num_param, cache=False
+        )
     except NoResultsOrTrafficError as e:
         results = None
         error_msg = str(e)
