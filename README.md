@@ -5,6 +5,7 @@
 Preview online: https://navisearch.streamlit.app/
 
 ![](./pics/screenshot.jpg)
+![](./pics/screenshot-dark.jpg)
 
 ### Deploy your own
 
