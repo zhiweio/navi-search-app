@@ -1,4 +1,5 @@
 import asyncio
+import os
 from functools import partial
 from typing import List, Union, Tuple
 
@@ -6,19 +7,54 @@ import pandas as pd
 import streamlit as st
 from loguru import logger as log
 from search_engine_parser import BaiduSearch as _BaiduSearch
-from search_engine_parser import (
-    DuckDuckGoSearch,
-    GoogleScholarSearch,
-    GithubSearch,
-)
+from search_engine_parser import DuckDuckGoSearch as _DuckDuckGoSearch
+from search_engine_parser import GithubSearch as _GithubSearch
+from search_engine_parser import GoogleScholarSearch as _GoogleScholarSearch
 from search_engine_parser import GoogleSearch as _GoogleSearch
 from search_engine_parser.core.base import SearchItem
 from search_engine_parser.core.engines.google import EXTRA_PARAMS
 from search_engine_parser.core.engines.youtube import Search as YoutubeSearch
 from search_engine_parser.core.exceptions import NoResultsOrTrafficError
+from search_engine_parser.core.utils import CacheHandler as _CacheHandler
+from search_engine_parser.core.utils import FILEPATH
+
+
+class CacheHandler(_CacheHandler):
+    def __init__(self):
+        self.cache = os.path.join(".cache", "cache")
+        engine_path = os.path.join(FILEPATH, "engines")
+        if not os.path.exists(self.cache):
+            os.makedirs(self.cache)
+        enginelist = os.listdir(engine_path)
+        self.engine_cache = {
+            i[:-3]: os.path.join(self.cache, i[:-3])
+            for i in enginelist
+            if i not in ("__init__.py")
+        }
+        for cache in self.engine_cache.values():
+            if not os.path.exists(cache):
+                os.makedirs(cache)
+
+
+class DuckDuckGoSearch(_DuckDuckGoSearch):
+    def get_cache_handler(self):
+        return CacheHandler()
+
+
+class GithubSearch(_GithubSearch):
+    def get_cache_handler(self):
+        return CacheHandler()
+
+
+class GoogleScholarSearch(_GoogleScholarSearch):
+    def get_cache_handler(self):
+        return CacheHandler()
 
 
 class GoogleSearch(_GoogleSearch):
+    def get_cache_handler(self):
+        return CacheHandler()
+
     def get_params(self, query=None, offset=None, page=None, **kwargs):
         params = {}
         params["start"] = (page - 1) * 10
@@ -33,6 +69,9 @@ class GoogleSearch(_GoogleSearch):
 
 
 class BaiduSearch(_BaiduSearch):
+    def get_cache_handler(self):
+        return CacheHandler()
+
     def get_params(self, query=None, page=None, offset=None, **kwargs):
         params = {}
         params["wd"] = query
