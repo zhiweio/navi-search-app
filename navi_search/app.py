@@ -15,7 +15,7 @@ from search_engine_parser import DuckDuckGoSearch as _DuckDuckGoSearch
 from search_engine_parser import GithubSearch as _GithubSearch
 from search_engine_parser import GoogleScholarSearch as _GoogleScholarSearch
 from search_engine_parser import GoogleSearch as _GoogleSearch
-from search_engine_parser.core.base import SearchItem
+from search_engine_parser.core.base import SearchItem, ReturnType
 from search_engine_parser.core.engines.google import EXTRA_PARAMS
 from search_engine_parser.core.engines.youtube import Search as YoutubeSearch
 from search_engine_parser.core.exceptions import NoResultsOrTrafficError
@@ -113,6 +113,26 @@ class BaiduSearch(_BaiduSearch):
             params["rn"] = kwargs["rn"]
         return params
 
+    def parse_single_result(self, single_result, return_type=ReturnType.FULL, **kwargs):
+        """Override the function to fix results parse error."""
+        rdict = SearchItem()
+        if return_type in (ReturnType.FULL, return_type.TITLE):
+            h3_tag = single_result.find("h3")
+
+            # sometimes h3 tag is not found
+            if h3_tag:
+                rdict["titles"] = h3_tag.text
+
+        if return_type in (ReturnType.FULL, ReturnType.LINK):
+            link_tag = single_result.find("a")
+            # Get the text and link
+            rdict["links"] = link_tag.get("href")
+
+        if return_type in (ReturnType.FULL, return_type.DESCRIPTION):
+            desc = single_result.find("div", class_="c-abstract")
+            rdict["descriptions"] = desc if desc else ""
+            return rdict
+
 
 _search_engines = {
     "Google": GoogleSearch(),
@@ -205,7 +225,7 @@ def search_preview(search_engine, query_keyword, page_num, num_results):
 
     res = search(search_engine, query_keyword, page_num, num_results)
     if res.results:
-        st.session_state.search_results[res.search_request] = res
+        st.session_state.search_results[req] = res
     else:
         st.toast(":orange-background[没有查询到结果或者查询失败!]", icon="⚠️")
         if res.error_info:
@@ -263,54 +283,58 @@ def welcome_frag():
     )
 
 
-@st.experimental_fragment
 def preview_frag():
     preview_cntr = st.container()
+    if not st.session_state.query_keyword:
+        preview_cntr.info("请搜索关键词...")
+        return
+
     req = SearchRequest(
         st.session_state.selected_engine,
         st.session_state.query_keyword,
         st.session_state.page_num,
         st.session_state.num_results,
     )
-    if st.session_state.search_results.get(req):
-        results_df = pd.DataFrame(
-            [dict(item) for item in st.session_state.search_results[req].results]
+    # result cache expired or not found
+    try:
+        res = st.session_state.search_results[req]
+    except KeyError:
+        return
+
+    results_df = pd.DataFrame([dict(item) for item in res.results])
+    height = 410
+    rows = len(results_df)
+    if rows > 20:
+        height = 810
+    preview_cntr.markdown("**搜索结果预览**")
+    table_tab, link_tab, json_tab, csv_tab = preview_cntr.tabs(
+        ["表格", "Markdown 链接", "JSON", "CSV"]
+    )
+    with table_tab:
+        st.dataframe(
+            results_df,
+            column_config={
+                "links": st.column_config.LinkColumn("links"),
+            },
+            hide_index=False,
+            height=height,
         )
-        height = 410
-        rows = len(results_df)
-        if rows > 20:
-            height = 810
-        preview_cntr.markdown("**搜索结果预览**")
-        table_tab, link_tab, json_tab, csv_tab = preview_cntr.tabs(
-            ["表格", "Markdown 链接", "JSON", "CSV"]
+    with link_tab:
+        results_df["md_links"] = (
+            "[" + results_df["titles"] + "](" + results_df["links"] + ")"
         )
-        with table_tab:
-            st.dataframe(
-                results_df,
-                column_config={
-                    "links": st.column_config.LinkColumn("links"),
-                },
-                hide_index=False,
-                height=height,
-            )
-        with link_tab:
-            results_df["md_links"] = (
-                "[" + results_df["titles"] + "](" + results_df["links"] + ")"
-            )
-            st.code("\n".join(results_df["md_links"].to_list()), language="markdown")
-        with json_tab:
-            st.code(
-                json.dumps(
-                    results_df.to_dict(orient="records"),
-                    indent=2,
-                    ensure_ascii=False,
-                ),
-                language="json",
-            )
-        with csv_tab:
-            st.code(results_df.to_csv(index=False), language="text")
-    else:
-        preview_cntr.info("请搜索关键词...")
+        st.code("\n".join(results_df["md_links"].to_list()), language="markdown")
+    with json_tab:
+        st.code(
+            json.dumps(
+                results_df.to_dict(orient="records"),
+                indent=2,
+                ensure_ascii=False,
+            ),
+            language="json",
+        )
+    with csv_tab:
+        st.code(results_df.to_csv(index=False), language="text")
 
 
 def main():
