@@ -302,6 +302,7 @@ def preview_frag():
         return
 
     results_df = pd.DataFrame([dict(item) for item in res.results])
+    results_df = results_df.fillna("").astype(str)
     height = 410
     rows = len(results_df)
     if rows > 20:
